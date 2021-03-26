@@ -30,8 +30,6 @@ Rails.application.routes.draw do
     require "sidekiq/cron/web"
 
     authenticated :user, ->(user) { user.tech_admin? } do
-      Sidekiq::Web.set :session_secret, Rails.application.secrets[:secret_key_base]
-      Sidekiq::Web.set :sessions, Rails.application.config.session_options
       Sidekiq::Web.class_eval do
         use Rack::Protection, permitted_origins: [URL.url] # resolve Rack Protection HttpOrigin
       end
@@ -50,8 +48,6 @@ Rails.application.routes.draw do
                                                                      remote_token http_origin session_hijacking] } })
         mount flipper_ui, at: "feature_flags"
       end
-      resources :buffer_updates, only: %i[create update]
-      resource :config
       resources :feedback_messages, only: %i[index show]
       resources :invitations, only: %i[index new create destroy]
       resources :organization_memberships, only: %i[update destroy create]
@@ -75,28 +71,13 @@ Rails.application.routes.draw do
         end
       end
 
-      # We do not expose the Data Update Scripts to all Forems by default.
-      constraints(->(_request) { FeatureFlag.enabled?(:data_update_scripts) }) do
-        resources :data_update_scripts, only: %i[index show] do
-          member do
-            post :force_run
-          end
-        end
-      end
-
-      # NOTE: @citizen428 The next two resources have a temporary constraint
-      # while profile generalization is still WIP
-      constraints(->(_request) { FeatureFlag.enabled?(:profile_admin) }) do
-        resources :profile_field_groups, only: %i[update create destroy]
-        resources :profile_fields, only: %i[index update create destroy]
-      end
-
       # These redirects serve as a safeguard to prevent 404s for any Admins
       # who have the old badge_achievement URLs bookmarked.
       get "/badges/badge_achievements", to: redirect("/admin/badge_achievements")
       get "/badges/badge_achievements/award_badges", to: redirect("/admin/badge_achievements/award_badges")
 
-      # NOTE: @ridhwana These routes below will be deleted once we remove the admin_restructure feature flag, hence they've been regrouped them in this manner.
+      # NOTE: @ridhwana These routes below will be deleted once we remove the
+      # admin_restructure feature flag, hence they've been regrouped in this manner.
       resources :articles, only: %i[index show update]
       resources :badges, only: %i[index edit update new create]
       resources :badge_achievements, only: %i[index destroy]
@@ -109,6 +90,7 @@ Rails.application.routes.draw do
         end
       end
       resources :comments, only: [:index]
+      resource :config
       resources :display_ads, only: %i[index edit update new create destroy]
       resources :events, only: %i[index create update new edit]
       resources :html_variants, only: %i[index edit update new create show destroy]
@@ -154,15 +136,29 @@ Rails.application.routes.draw do
       end
       resources :webhook_endpoints, only: :index
       resources :welcome, only: %i[index create]
+
+      # We do not expose the Data Update Scripts to all Forems by default.
+      constraints(->(_request) { FeatureFlag.enabled?(:data_update_scripts) }) do
+        resources :data_update_scripts, only: %i[index show] do
+          member do
+            post :force_run
+          end
+        end
+      end
+
+      # NOTE: @citizen428 The next two resources have a temporary constraint
+      # while profile generalization is still WIP
+      constraints(->(_request) { FeatureFlag.enabled?(:profile_admin) }) do
+        resources :profile_field_groups, only: %i[update create destroy]
+        resources :profile_fields, only: %i[index update create destroy]
+      end
+
       # @ridhwana end of routes that will be deleted once we remove the admin_restructure feature flag
 
       # @ridhwana Feature Flag that implements the updated routes for the admin restructure is a work in progress.
       constraints(->(_request) { FeatureFlag.enabled?(:admin_restructure) }) do
-        # People
-        # get "admin/users", to: ""
-
-        scope path: :content_manager do
-          resources :articles, only: %i[index show update] #done: index
+        scope path: :content_manager, as: "content_manager" do
+          resources :articles, only: %i[index show update]
           resources :badges, only: %i[index edit update new create]
           resources :badge_achievements, only: %i[index destroy]
           get "/badge_achievements/award_badges", to: "badge_achievements#award"
@@ -184,14 +180,22 @@ Rails.application.routes.draw do
           end
         end
 
-        scope path: :customization do
+        scope path: :customization, as: "customization" do
+          resource :config
           resources :display_ads, only: %i[index edit update new create destroy]
           resources :html_variants, only: %i[index edit update new create show destroy]
           resources :navigation_links, only: %i[index update create destroy]
           resources :pages, only: %i[index new create edit update destroy]
+
+          # NOTE: @citizen428 The next two resources have a temporary constraint
+          # while profile generalization is still WIP
+          constraints(->(_request) { FeatureFlag.enabled?(:profile_admin) }) do
+            resources :profile_field_groups, only: %i[update create destroy]
+            resources :profile_fields, only: %i[index update create destroy]
+          end
         end
 
-        scope path: :moderation do
+        scope path: :moderation, as: "moderation" do
           resources :reports, only: %i[index show], controller: "feedback_messages" do
             collection do
               post "send_email"
@@ -204,7 +208,7 @@ Rails.application.routes.draw do
           resources :privileged_reactions, only: %i[index]
         end
 
-        scope path: :advanced do
+        scope path: :advanced, as: "advanced" do
           resources :broadcasts
           resources :response_templates, only: %i[index new edit create update destroy]
           resources :secrets, only: %i[index]
@@ -216,9 +220,18 @@ Rails.application.routes.draw do
             end
           end
           resources :webhook_endpoints, only: :index
+
+          # We do not expose the Data Update Scripts to all Forems by default.
+          constraints(->(_request) { FeatureFlag.enabled?(:data_update_scripts) }) do
+            resources :data_update_scripts, only: %i[index show] do
+              member do
+                post :force_run
+              end
+            end
+          end
         end
 
-        scope path: :app do
+        scope path: :apps do
           resources :chat_channels, only: %i[index create update destroy] do
             member do
               delete :remove_user
@@ -324,7 +337,13 @@ Rails.application.routes.draw do
       end
     end
     resources :comment_mutes, only: %i[update]
-    resources :users, only: %i[index], defaults: { format: :json } # internal API
+    resources :users, only: %i[index], defaults: { format: :json } do # internal API
+      constraints(-> { FeatureFlag.enabled?(:mobile_notifications) }) do
+        collection do
+          resources :devices, only: %i[create destroy]
+        end
+      end
+    end
     resources :users, only: %i[update]
     resources :reactions, only: %i[index create]
     resources :response_templates, only: %i[index create edit update destroy]
@@ -363,7 +382,6 @@ Rails.application.routes.draw do
     resources :credits, only: %i[index new create] do
       get "purchase", on: :collection, to: "credits#new"
     end
-    resources :buffer_updates, only: [:create]
     resources :reading_list_items, only: [:update]
     resources :poll_votes, only: %i[show create]
     resources :poll_skips, only: [:create]
@@ -569,9 +587,6 @@ Rails.application.routes.draw do
     # open search
     get "/open-search", to: "open_search#show",
                         constraints: { format: /xml/ }
-
-    get "/shell_top", to: "shell#top"
-    get "/shell_bottom", to: "shell#bottom"
 
     get "/new", to: "articles#new"
     get "/new/:template", to: "articles#new"
