@@ -1,7 +1,8 @@
 ---
-
+***
 THIS IS A TEST TO CHECK IF A COMMIT TRIGGERS THE PIPELINE
-
+Including deployment
+*** 
 ---
 
 <div align="center">
