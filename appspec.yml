@@ -1,13 +1,12 @@
 version: 0.0
 os: linux
 files:
-  - source: source
+  - source: /
     destination: /webapps/myApp
 hooks:
   BeforeInstall:
     - location: Scripts/UnzipResourceBundle.sh
     - location: Scripts/UnzipDataBundle.sh
-    - runas: root
   AfterInstall:
     - location: Scripts/RunResourceTests.sh
       timeout: 180
