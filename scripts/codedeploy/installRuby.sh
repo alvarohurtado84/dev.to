@@ -19,5 +19,11 @@ rbenv install $(cat /webapps/myApp/.ruby-version)
 echo 'Set as global'
 rbenv global $(cat /webapps/myApp/.ruby-version)
 
+echo 'Install bundler'
+gem install bundler
+
+echo 'Rehash rbenv'
+rbenv rehash
+
 echo 'Test Rbenv + Ruby'
 curl -fsSL https://github.com/rbenv/rbenv-installer/raw/master/bin/rbenv-doctor | bash
