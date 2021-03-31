@@ -17,8 +17,13 @@ git clone https://github.com/rbenv/rbenv.git /root/.rbenv
 echo '1.3. Export and eval to .bashrc'
 echo 'export PATH="/root/.rbenv/bin:$PATH"' >> /root/.bashrc
 echo 'eval "$(rbenv init -)"' >> /root/.bashrc
-echo '1.4. Exec Shell'
-exec $SHELL
+
+echo '1.4. Export rbenv'
+export PATH="/root/.rbenv/bin:$PATH"
+eval "$(rbenv init -)"
+
+#echo '1.4. Exec Shell'
+#exec $SHELL
 
 echo '1.5. Remove ruby-build'
 rm -rf /root/.rbenv/plugins/ruby-build
@@ -26,8 +31,12 @@ echo '1.6. Clone ruby-build'
 git clone https://github.com/rbenv/ruby-build.git /root/.rbenv/plugins/ruby-build
 echo '1.7. Export ruby-build'
 echo 'export PATH="/root/.rbenv/plugins/ruby-build/bin:$PATH"' >> /root/.bashrc
-echo '1.8. Exec Shell'
-exec $SHELL
+
+#echo '1.8. Exec Shell'
+#exec $SHELL
+
+echo '1.8. Export ruby-build'
+export PATH="/root/.rbenv/plugins/ruby-build/bin:$PATH"
 
 echo '2. Install Ruby'
 rbenv install -v -f $(cat /webapps/myApp/.ruby-version)
