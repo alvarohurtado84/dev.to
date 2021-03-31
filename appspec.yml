@@ -8,8 +8,11 @@ hooks:
   #  - location: Scripts/UnzipResourceBundle.sh
   #  - location: Scripts/UnzipDataBundle.sh
   AfterInstall:
-    - location: Scripts/RunResourceTests.sh
-      timeout: 180
+    - location: scripts/codedeploy/changeDirectory.sh
+    - location: scripts/codedeploy/aptGetUpdate.sh
+    - location: scripts/codedeploy/installRuby.sh
+    - location: scripts/codedeploy/installDependencies.sh
+      timeout: 3600
   ApplicationStart:
     - location: Scripts/RunFunctionalTests.sh
       timeout: 3600
