@@ -12,10 +12,10 @@ hooks:
     - location: scripts/codedeploy/aptGetUpdate.sh
     - location: scripts/codedeploy/installRuby.sh
       timeout: 3600
-  ApplicationStart:
-    - location: Scripts/RunFunctionalTests.sh
-      timeout: 3600
-  ValidateService:
-    - location: Scripts/MonitorService.sh
-      timeout: 3600
-      runas: codedeployuser
+#  ApplicationStart:
+#    - location: Scripts/RunFunctionalTests.sh
+#      timeout: 3600
+#  ValidateService:
+#    - location: Scripts/MonitorService.sh
+#      timeout: 3600
+#      runas: codedeployuser
