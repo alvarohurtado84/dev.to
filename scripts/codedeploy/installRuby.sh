@@ -1,5 +1,11 @@
 #!/bin/bash
 
+
+echo '*********'
+echo 'INSTALL RUBY SH'
+echo '*********'
+
+
 echo 'Install Rbenv'
 apt install rbenv ruby-build
 

@@ -1,5 +1,11 @@
 #!/bin/bash
 
+
+echo '*********'
+echo 'APT GET UPDATE SH'
+echo '*********'
+
+
 echo 'Update Apt-Get'
 sudo apt-get update
 sudo apt update
