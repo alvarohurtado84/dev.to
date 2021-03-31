@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo 'Install Rbenv'
-sudo apt install rbenv
+curl -fsSL https://github.com/rbenv/rbenv-installer/raw/master/bin/rbenv-installer | bash
 
 echo 'Update Rbenv ruby-build list'
 cd
