@@ -4,16 +4,15 @@ echo 'Install Rbenv'
 apt install rbenv ruby-build
 
 echo 'Update Rbenv and ruby-build'
-cd
-rm -rf ~/.rbenv
-git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
-echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+rm -rf /root/.rbenv
+git clone https://github.com/rbenv/rbenv.git /root/.rbenv
+echo 'export PATH="/root/.rbenv/bin:$PATH"' >> /root/.bashrc
+echo 'eval "$(rbenv init -)"' >> /root/.bashrc
 exec $SHELL
 
-rm -rf ~/.rbenv/plugins/ruby-build
-git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bashrc
+rm -rf /root/.rbenv/plugins/ruby-build
+git clone https://github.com/rbenv/ruby-build.git /root/.rbenv/plugins/ruby-build
+echo 'export PATH="/root/.rbenv/plugins/ruby-build/bin:$PATH"' >> /root/.bashrc
 exec $SHELL
 
 echo 'Install Ruby'
