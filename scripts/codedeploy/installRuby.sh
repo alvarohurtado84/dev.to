@@ -62,10 +62,14 @@ echo '*********'
 
 
 echo '6. Adding alternatives'
+# This is GOLD - https://www.brightbox.com/docs/ruby/ubuntu/#switching-the-default-ruby-version
+#apt-get remove ruby -y
 apt-get install software-properties-common
 apt-add-repository ppa:brightbox/ruby-ng -y
 apt-get update
-apt-get install ruby2.7
+apt-get upgrade ruby2.7 -y
+#apt-get install ruby-switch
+#ruby-switch --set ruby2.7
 
 #echo '5. Rehash rbenv'
 #rbenv rehash
