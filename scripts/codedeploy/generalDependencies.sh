@@ -17,3 +17,6 @@ sudo apt update && sudo apt install -y yarn
 
 echo 'Install ImageMagick'
 apt install imagemagick -y
+
+echo 'Need this, otherwise Gem pg fails'
+sudo apt-get install libpq-dev -y
