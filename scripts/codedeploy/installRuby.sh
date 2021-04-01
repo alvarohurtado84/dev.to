@@ -42,21 +42,30 @@ echo '*********'
 #rbenv global $(cat /webapps/myApp/.ruby-version)
 
 
-echo '1. Download ruby'
-curl https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.2.zip --output ruby-2.7.2.zip
-cd ruby-2.7.2
+#echo '1. Download ruby'
+#curl https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.2.zip --output ruby-2.7.2.zip
+#unzip ruby-2.7.2.zip
+#cd ruby-2.7.2
+#
+#echo '2. Configure'
+#./configure
+#
+#echo '3. Make and Make Check'
+#make
+#? make check
+#
+#echo '4. Make install'
+#make install
+#
+#echo '5. Install bundler'
+#gem install bundler
 
-echo '2. Configure'
-./configure
 
-echo '3. Make and Make Check'
-make && make check
-
-echo '4. Make install'
-make install
-
-echo '4. Install bundler'
-gem install bundler
+echo '6. Adding alternatives'
+apt-get install software-properties-common
+apt-add-repository ppa:brightbox/ruby-ng -y
+apt-get update
+apt-get install ruby2.7
 
 #echo '5. Rehash rbenv'
 #rbenv rehash
