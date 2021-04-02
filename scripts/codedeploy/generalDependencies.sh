@@ -31,3 +31,6 @@ apt install imagemagick -y
 
 echo 'Need this, otherwise Gem pg fails'
 sudo apt-get install libpq-dev -y
+
+echo 'Needed for the Paramater Store'
+sudo gem install aws-sdk
