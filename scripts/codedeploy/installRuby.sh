@@ -17,7 +17,7 @@ apt-get update
 
 echo '3. Upgrade Ruby to 2.7.2'
 apt-get upgrade ruby2.7 -y
-apt install ruby-dev
+apt install ruby-dev -y
 
 echo '4. Install bundler'
 gem install bundler
