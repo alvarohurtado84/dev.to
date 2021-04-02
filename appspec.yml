@@ -10,6 +10,7 @@ hooks:
     - location: scripts/codedeploy/installRuby.sh
   AfterInstall:
     - location: scripts/codedeploy/installForem.sh
+    - location: scripts/codedeploy/configureForem.sh
       timeout: 3600
 #  ApplicationStart:
 #    - location: Scripts/RunFunctionalTests.sh
