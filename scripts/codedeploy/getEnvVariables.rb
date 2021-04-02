@@ -4,9 +4,17 @@ require 'aws-sdk'
 client = Aws::SSM::Client.new(region: 'eu-west-1')
 
 parameter_path = '/foodpeople/prod/'
-result = client.get_parameters_by_path(path: parameter_path)
 
-while result.next_token do
+first_round = false
+
+loop do
+
+  if first_round
+    result = client.get_parameters_by_path(path: parameter_path)
+  else
+    result = client.get_parameters_by_path(path: parameter_path, next_token:result.next_token)
+  end
+  
   result.parameters.each do |parameter|
 
     variable = parameter.name.gsub(parameter_path, '') + '=' + parameter.value
@@ -16,7 +24,11 @@ while result.next_token do
 
   end
   
-  result = client.get_parameters_by_path(path: parameter_path, next_token:result.next_token)
+  if result.next_token
+    first_round = false
+  else
+    break
+  end
   
 end
 
