@@ -12,9 +12,9 @@ hooks:
     - location: scripts/codedeploy/installForem.sh
     - location: scripts/codedeploy/configureForem.sh
       timeout: 3600
-#  ApplicationStart:
-#    - location: Scripts/RunFunctionalTests.sh
-#      timeout: 3600
+  ApplicationStart:
+    - location: scripts/codedeploy/startApplication.sh
+      timeout: 3600
 #  ValidateService:
 #    - location: Scripts/MonitorService.sh
 #      timeout: 3600
