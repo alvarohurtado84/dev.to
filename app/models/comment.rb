@@ -2,6 +2,7 @@ class Comment < ApplicationRecord
   has_ancestry
   resourcify
 
+  include PgSearch::Model
   include Reactable
   include Searchable
 
@@ -9,7 +10,9 @@ class Comment < ApplicationRecord
   SEARCH_CLASS = Search::FeedContent
 
   BODY_MARKDOWN_SIZE_RANGE = (1..25_000).freeze
+
   COMMENTABLE_TYPES = %w[Article PodcastEpisode].freeze
+
   TITLE_DELETED = "[deleted]".freeze
   TITLE_HIDDEN = "[hidden by post author]".freeze
 
@@ -28,7 +31,6 @@ class Comment < ApplicationRecord
   has_many :mentions, as: :mentionable, inverse_of: :mentionable, dependent: :destroy
   has_many :notifications, as: :notifiable, inverse_of: :notifiable, dependent: :delete_all
   has_many :notification_subscriptions, as: :notifiable, inverse_of: :notifiable, dependent: :destroy
-
   before_validation :evaluate_markdown, if: -> { body_markdown }
   before_save :set_markdown_character_count, if: :body_markdown
   before_save :synchronous_spam_score_check
@@ -66,6 +68,25 @@ class Comment < ApplicationRecord
   after_update_commit :update_notifications, if: proc { |comment| comment.saved_changes.include? "body_markdown" }
 
   after_commit :remove_from_elasticsearch, on: [:destroy]
+
+  # [@atsmith813] this is adapted from the `search_field` property in
+  # `config/elasticsearch/mappings/feed_content.json` and
+  # `app/serializers/search/comment_serializer.rb`
+  #
+  # highlighter settings are taken from
+  # Search::QueryBuildersFeedContent#add_highlight_fields
+  pg_search_scope :search_comments,
+                  against: %i[body_markdown],
+                  using: {
+                    tsearch: {
+                      prefix: true,
+                      highlight: {
+                        StartSel: "<mark>",
+                        StopSel: "</mark>",
+                        MaxFragments: 2
+                      }
+                    }
+                  }
 
   scope :eager_load_serialized_data, -> { includes(:user, :commentable) }
 
@@ -313,8 +334,8 @@ class Comment < ApplicationRecord
   def user_mentions_in_markdown
     return if created_at.present? && created_at.before?(MAX_USER_MENTION_LIVE_AT)
 
-    # The "comment-mentioned-user" css is added by Html::Parser#user_link_if_exists
-    mentions_count = Nokogiri::HTML(processed_html).css(".comment-mentioned-user").size
+    # The "mentioned-user" css is added by Html::Parser#user_link_if_exists
+    mentions_count = Nokogiri::HTML(processed_html).css(".mentioned-user").size
     return if mentions_count <= MAX_USER_MENTIONS
 
     errors.add(:base, "You cannot mention more than #{MAX_USER_MENTIONS} users in a comment!")

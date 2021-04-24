@@ -1,6 +1,10 @@
 class NotifyMailer < ApplicationMailer
-  has_history extra: -> { { feedback_message_id: params[:feedback_message_id] } },
-              only: :feedback_message_resolution_email
+  has_history extra: lambda {
+    {
+      feedback_message_id: params[:feedback_message_id],
+      utm_campaign: params[:email_type]
+    }
+  }, only: :feedback_message_resolution_email
 
   def new_reply_email
     @comment = params[:comment]
@@ -105,6 +109,14 @@ class NotifyMailer < ApplicationMailer
     @name = params[:name]
 
     subject = "#{SiteConfig.community_name} - Account Deletion Confirmation"
+    mail(to: params[:email], subject: subject)
+  end
+
+  def organization_deleted_email
+    @name = params[:name]
+    @org_name = params[:org_name]
+
+    subject = "#{SiteConfig.community_name} - Organization Deletion Confirmation"
     mail(to: params[:email], subject: subject)
   end
 

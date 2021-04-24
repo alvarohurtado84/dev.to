@@ -48,13 +48,12 @@ RSpec.describe "/admin/config", type: :request do
       end
 
       it "updates site config admin action taken" do
-        Timecop.freeze do
-          expect(SiteConfig.admin_action_taken_at).not_to eq(5.minutes.ago)
-          allow(SiteConfig).to receive(:admin_action_taken_at).and_return(5.minutes.ago)
-          post "/admin/config", params: { site_config: { health_check_token: "token" },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.admin_action_taken_at).to eq(5.minutes.ago)
-        end
+        expect do
+          post "/admin/config", params: {
+            site_config: { health_check_token: "token" },
+            confirmation: confirmation_message
+          }
+        end.to change(SiteConfig, :admin_action_taken_at)
       end
 
       describe "API tokens" do
@@ -75,103 +74,121 @@ RSpec.describe "/admin/config", type: :request do
       describe "Authentication" do
         it "updates enabled authentication providers" do
           enabled = Authentication::Providers.available.last.to_s
-          post admin_config_path, params: {
-            site_config: {
+          post admin_settings_authentications_path, params: {
+            settings_authentication: {
               "#{enabled}_key": "someKey",
               "#{enabled}_secret": "someSecret",
               auth_providers_to_enable: enabled
             },
             confirmation: confirmation_message
           }
-          expect(SiteConfig.authentication_providers).to eq([enabled])
-        end
-
-        describe "Campaigns" do
-          it "sets campaign_articles_expiry_time" do
-            post "/admin/config", params: { site_config: { campaign_articles_expiry_time: 4 },
-                                            confirmation: confirmation_message }
-            expect(SiteConfig.campaign_articles_expiry_time).to eq(4)
-          end
+          expect(Settings::Authentication.providers).to eq([enabled])
         end
 
         it "strips empty elements" do
           provider = Authentication::Providers.available.last.to_s
           enabled = "#{provider}, '', nil"
-          post admin_config_path, params: {
-            site_config: {
+          post admin_settings_authentications_path, params: {
+            settings_authentication: {
               "#{provider}_key": "someKey",
               "#{provider}_secret": "someSecret",
               auth_providers_to_enable: enabled
             },
             confirmation: confirmation_message
           }
-          expect(SiteConfig.authentication_providers).to eq([provider])
+          expect(Settings::Authentication.providers).to eq([provider])
         end
 
         it "does not update enabled authentication providers if any associated key missing" do
           enabled = Authentication::Providers.available.first.to_s
-          post admin_config_path, params: {
-            site_config: {
+          post admin_settings_authentications_path, params: {
+            settings_authentication: {
               "#{enabled}_key": "someKey",
               "#{enabled}_secret": "",
               auth_providers_to_enable: enabled
             },
             confirmation: confirmation_message
           }
-          expect(SiteConfig.authentication_providers).to eq([])
+          expect(Settings::Authentication.providers).to eq([])
         end
 
         it "enables proper domains to allow list" do
           proper_list = "dev.to, forem.com, forem.dev"
-          post "/admin/config", params: { site_config: { allowed_registration_email_domains: proper_list },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.allowed_registration_email_domains).to eq(%w[dev.to forem.com forem.dev])
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { allowed_registration_email_domains: proper_list },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.allowed_registration_email_domains).to eq(%w[dev.to forem.com forem.dev])
         end
 
         it "allows 2-character domains" do
           proper_list = "dev.to, forem.com, 2u.com"
-          post "/admin/config", params: { site_config: { allowed_registration_email_domains: proper_list },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.allowed_registration_email_domains).to eq(%w[dev.to forem.com 2u.com])
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { allowed_registration_email_domains: proper_list },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.allowed_registration_email_domains).to eq(%w[dev.to forem.com 2u.com])
         end
 
         it "does not allow improper domain list" do
           impproper_list = "dev.to, foremcom, forem.dev"
-          post "/admin/config", params: { site_config: { allowed_registration_email_domains: impproper_list },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.allowed_registration_email_domains).not_to eq(%w[dev.to foremcom forem.dev])
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { allowed_registration_email_domains: impproper_list },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.allowed_registration_email_domains).not_to eq(%w[dev.to foremcom forem.dev])
         end
 
         it "enables display_email_domain_allow_list_publicly" do
-          post "/admin/config", params: { site_config: { display_email_domain_allow_list_publicly: true },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.display_email_domain_allow_list_publicly).to be(true)
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { display_email_domain_allow_list_publicly: true },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.display_email_domain_allow_list_publicly).to be(true)
         end
 
         it "enables email authentication" do
-          post "/admin/config", params: { site_config: { allow_email_password_registration: true },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.allow_email_password_registration).to be(true)
-          expect(SiteConfig.allow_email_password_login).to be(true)
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { allow_email_password_registration: true },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.allow_email_password_registration).to be(true)
+          expect(Settings::Authentication.allow_email_password_login).to be(true)
         end
 
         it "disables email authentication" do
-          post "/admin/config", params: { site_config: { allow_email_password_registration: false },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.allow_email_password_registration).to be(false)
-          expect(SiteConfig.allow_email_password_login).to be(true)
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { allow_email_password_registration: false },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.allow_email_password_registration).to be(false)
+          expect(Settings::Authentication.allow_email_password_login).to be(true)
         end
 
         it "enables invite-only-mode" do
-          post "/admin/config", params: { site_config: { invite_only_mode: true },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.invite_only_mode).to be(true)
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { invite_only_mode: true },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.invite_only_mode).to be(true)
         end
 
         it "disables invite-only-mode & enables just email registration" do
-          post "/admin/config", params: { site_config: { invite_only_mode: false },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.invite_only_mode).to be(false)
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { invite_only_mode: false },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Authentication.invite_only_mode).to be(false)
+        end
+      end
+
+      describe "Campaigns" do
+        it "sets articles_expiry_time" do
+          post admin_settings_campaigns_path, params: {
+            settings_campaign: { articles_expiry_time: 4 },
+            confirmation: confirmation_message
+          }
+          expect(Settings::Campaign.articles_expiry_time).to eq(4)
         end
       end
 
@@ -449,7 +466,7 @@ RSpec.describe "/admin/config", type: :request do
           expect(SiteConfig.mascot_footer_image_width).to eq(expected_default_mascot_footer_image_width)
 
           post "/admin/config", params: { site_config:
-                                            { mascot_footer_image_width: expected_mascot_footer_image_width },
+                                          { mascot_footer_image_width: expected_mascot_footer_image_width },
                                           confirmation: confirmation_message }
           expect(SiteConfig.mascot_footer_image_width).to eq(expected_mascot_footer_image_width)
         end
@@ -461,7 +478,7 @@ RSpec.describe "/admin/config", type: :request do
           expect(SiteConfig.mascot_footer_image_height).to eq(expected_default_mascot_footer_image_height)
 
           post "/admin/config", params: { site_config:
-                                            { mascot_footer_image_height: expected_mascot_footer_image_height },
+                                          { mascot_footer_image_height: expected_mascot_footer_image_height },
                                           confirmation: confirmation_message }
           expect(SiteConfig.mascot_footer_image_height).to eq(expected_mascot_footer_image_height)
         end
@@ -617,133 +634,163 @@ RSpec.describe "/admin/config", type: :request do
       end
 
       describe "Rate Limits and spam" do
-        it "updates rate_limit_follow_count_daily" do
-          default_value = SiteConfig.get_default(:rate_limit_follow_count_daily)
+        it "updates follow_count_daily" do
+          default_value = Settings::RateLimit.get_default(:follow_count_daily)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_follow_count_daily: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_follow_count_daily).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { follow_count_daily: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :follow_count_daily).from(default_value).to(3)
         end
 
-        it "updates rate_limit_comment_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_comment_creation)
+        it "updates comment_creation" do
+          default_value = Settings::RateLimit.get_default(:comment_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_comment_creation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_comment_creation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { comment_creation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :comment_creation).from(default_value).to(3)
         end
 
-        it "updates rate_limit_published_article_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_published_article_creation)
+        it "updates published_article_creation" do
+          default_value = Settings::RateLimit.get_default(:published_article_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_published_article_creation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_published_article_creation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { published_article_creation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :published_article_creation).from(default_value).to(3)
         end
 
-        it "updates rate_limit_published_article_antispam_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_published_article_antispam_creation)
+        it "updates published_article_antispam_creation" do
+          default_value = Settings::RateLimit.get_default(:published_article_antispam_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_published_article_antispam_creation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_published_article_antispam_creation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { published_article_antispam_creation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :published_article_antispam_creation).from(default_value).to(3)
         end
 
-        it "updates rate_limit_organization_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_organization_creation)
+        it "updates organization_creation" do
+          default_value = Settings::RateLimit.get_default(:organization_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_organization_creation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_organization_creation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { organization_creation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :organization_creation).from(default_value).to(3)
         end
 
-        it "updates rate_limit_image_upload" do
-          default_value = SiteConfig.get_default(:rate_limit_image_upload)
+        it "updates image_upload" do
+          default_value = Settings::RateLimit.get_default(:image_upload)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_image_upload: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_image_upload).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { image_upload: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :image_upload).from(default_value).to(3)
         end
 
-        it "updates rate_limit_email_recipient" do
-          default_value = SiteConfig.get_default(:rate_limit_email_recipient)
+        it "updates email_recipient" do
+          default_value = Settings::RateLimit.get_default(:email_recipient)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_email_recipient: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_email_recipient).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { email_recipient: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :email_recipient).from(default_value).to(3)
         end
 
-        it "updates rate_limit_user_subscription_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_user_subscription_creation)
+        it "updates user_subscription_creation" do
+          default_value = Settings::RateLimit.get_default(:user_subscription_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_user_subscription_creation: 1 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_user_subscription_creation).from(default_value).to(1)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { user_subscription_creation: 1 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :user_subscription_creation).from(default_value).to(1)
         end
 
-        it "updates rate_limit_article_update" do
-          default_value = SiteConfig.get_default(:rate_limit_article_update)
+        it "updates article_update" do
+          default_value = Settings::RateLimit.get_default(:article_update)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_article_update: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_article_update).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { article_update: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :article_update).from(default_value).to(3)
         end
 
-        it "updates rate_limit_user_update" do
+        it "updates user_update" do
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_user_update: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_user_update).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { user_update: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :user_update).to(3)
         end
 
-        it "updates rate_limit_feedback_message_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_feedback_message_creation)
+        it "updates feedback_message_creation" do
+          default_value = Settings::RateLimit.get_default(:feedback_message_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_feedback_message_creation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_feedback_message_creation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { feedback_message_creation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :feedback_message_creation).from(default_value).to(3)
         end
 
-        it "updates rate_limit_listing_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_listing_creation)
+        it "updates listing_creation" do
+          default_value = Settings::RateLimit.get_default(:listing_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_listing_creation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_listing_creation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { listing_creation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :listing_creation).from(default_value).to(3)
         end
 
-        it "updates rate_limit_reaction_creation" do
-          default_value = SiteConfig.get_default(:rate_limit_reaction_creation)
+        it "updates reaction_creation" do
+          default_value = Settings::RateLimit.get_default(:reaction_creation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_reaction_creation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_reaction_creation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { reaction_creation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :reaction_creation).from(default_value).to(3)
         end
 
-        it "updates rate_limit_send_email_confirmation" do
-          default_value = SiteConfig.get_default(:rate_limit_send_email_confirmation)
+        it "updates send_email_confirmation" do
+          default_value = Settings::RateLimit.get_default(:send_email_confirmation)
           expect do
-            post "/admin/config", params: { site_config: { rate_limit_send_email_confirmation: 3 },
-                                            confirmation: confirmation_message }
-          end.to change(SiteConfig, :rate_limit_send_email_confirmation).from(default_value).to(3)
+            post admin_settings_rate_limits_path, params: {
+              settings_rate_limit: { send_email_confirmation: 3 },
+              confirmation: confirmation_message
+            }
+          end.to change(Settings::RateLimit, :send_email_confirmation).from(default_value).to(3)
         end
 
         it "updates spam_trigger_terms" do
           spam_trigger_terms = "hey, pokemon go hack"
-          post "/admin/config", params: { site_config: { spam_trigger_terms: spam_trigger_terms },
-                                          confirmation: confirmation_message }
-          expect(SiteConfig.spam_trigger_terms).to eq(["hey", "pokemon go hack"])
+          post admin_settings_rate_limits_path, params: {
+            settings_rate_limit: { spam_trigger_terms: spam_trigger_terms },
+            confirmation: confirmation_message
+          }
+          expect(Settings::RateLimit.spam_trigger_terms).to eq(["hey", "pokemon go hack"])
         end
 
         it "updates recaptcha_site_key and recaptcha_secret_key" do
           site_key = "hi-ho"
           secret_key = "lets-go"
-          post "/admin/config", params: {
-            site_config: { recaptcha_site_key: site_key, recaptcha_secret_key: secret_key },
+          post admin_settings_authentications_path, params: {
+            settings_authentication: { recaptcha_site_key: site_key, recaptcha_secret_key: secret_key },
             confirmation: confirmation_message
           }
-          expect(SiteConfig.recaptcha_site_key).to eq site_key
-          expect(SiteConfig.recaptcha_secret_key).to eq secret_key
+          expect(Settings::Authentication.recaptcha_site_key).to eq site_key
+          expect(Settings::Authentication.recaptcha_secret_key).to eq secret_key
         end
       end
 

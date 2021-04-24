@@ -32,6 +32,7 @@ RSpec.describe Article, type: :model do
     it { is_expected.to have_many(:tags) }
     it { is_expected.to have_many(:user_subscriptions).dependent(:nullify) }
 
+    it { is_expected.to validate_length_of(:body_markdown).is_at_least(0) }
     it { is_expected.to validate_length_of(:cached_tag_list).is_at_most(126) }
     it { is_expected.to validate_length_of(:title).is_at_most(128) }
 
@@ -81,11 +82,25 @@ RSpec.describe Article, type: :model do
     end
 
     describe "#body_markdown" do
-      it "is unique scoped for user_id and title" do
+      it "is unique scoped for user_id and title", :aggregate_failures do
         art2 = build(:article, body_markdown: article.body_markdown, user: article.user, title: article.title)
 
         expect(art2).not_to be_valid
-        expect(art2.errors.full_messages.to_sentence).to match("markdown has already been taken")
+        expect(art2.errors_as_sentence).to match("markdown has already been taken")
+      end
+
+      # using https://unicode-table.com/en/11A15/ multibyte char
+      it "is valid if its bytesize is less than 800 kilobytes" do
+        article.body_markdown = "𑨕" * 204_800 # 4 bytes x 204800 = 800 kilobytes
+
+        expect(article).to be_valid
+      end
+
+      it "is not valid if its bytesize exceeds 800 kilobytes" do
+        article.body_markdown = "𑨕" * 204_801
+
+        expect(article).not_to be_valid
+        expect(article.errors_as_sentence).to match("too long")
       end
     end
 
@@ -997,6 +1012,44 @@ RSpec.describe Article, type: :model do
     end
   end
 
+  context "when triggers are invoked" do
+    let(:article) { create(:article) }
+
+    before do
+      article.update(body_markdown: "An intense movie")
+    end
+
+    it "sets .reading_list_document on insert" do
+      expect(article.reload.reading_list_document).to be_present
+    end
+
+    it "updates .reading_list_document with body_markdown" do
+      article.update(body_markdown: "Something has changed")
+
+      expect(article.reload.reading_list_document).to include("something")
+    end
+
+    it "updates .reading_list_document with cached_tag_list" do
+      article.update(tag_list: %w[rust python])
+
+      expect(article.reload.reading_list_document).to include("rust")
+    end
+
+    it "updates .reading_list_document with title" do
+      article.update(title: "Synecdoche, Los Angeles")
+
+      expect(article.reload.reading_list_document).to include("angeles")
+    end
+
+    it "removes a previous value from .reading_list_document on update", :aggregate_failures do
+      tag = article.tags.first.name
+      article.update(tag_list: %w[fsharp go])
+
+      expect(article.reload.reading_list_document).not_to include(tag)
+      expect(article.reload.reading_list_document).to include("fsharp")
+    end
+  end
+
   describe ".feed" do
     it "returns records with a subset of attributes" do
       feed_article = described_class.feed.first
@@ -1115,6 +1168,16 @@ RSpec.describe Article, type: :model do
       expect(article).not_to be_valid
       expect(article.errors[:base])
         .to include("You cannot mention more than #{Article::MAX_USER_MENTIONS} users in a post!")
+    end
+  end
+
+  describe "#followers" do
+    it "returns an array of users who follow the article's author" do
+      following_user = create(:user)
+      following_user.follow(user)
+
+      expect(article.followers.length).to eq(1)
+      expect(article.followers.first.username).to eq(following_user.username)
     end
   end
 
