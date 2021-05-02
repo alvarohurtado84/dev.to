@@ -20,6 +20,17 @@ else
 
 fi
 
+echo "*"
+echo "***"
+echo "*******"
+echo "***********"
+echo "Executing RELEASE TASKS"
+./release-tasks.sh
+echo "***********"
+echo "*******"
+echo "***"
+echo "*"
+
 case "$@" in
 
   precompile)
