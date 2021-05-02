@@ -36,7 +36,14 @@ class User < ApplicationRecord
     youtube_url
   ].freeze
 
-  self.ignored_columns = PROFILE_COLUMNS
+  PROVIDER_COLUMNS = %w[
+    apple_created_at
+    facebook_created_at
+    github_created_at
+    twitter_created_at
+  ].freeze
+
+  self.ignored_columns = PROFILE_COLUMNS + PROVIDER_COLUMNS
 
   # NOTE: @citizen428 This is temporary code during profile migration and will
   # be removed.
@@ -308,11 +315,11 @@ class User < ApplicationRecord
   after_commit :remove_from_elasticsearch, on: [:destroy]
 
   def self.dev_account
-    find_by(id: SiteConfig.staff_user_id)
+    find_by(id: Settings::Community.staff_user_id)
   end
 
   def self.mascot_account
-    find_by(id: SiteConfig.mascot_user_id)
+    find_by(id: Settings::Mascot.mascot_user_id)
   end
 
   def tag_line
